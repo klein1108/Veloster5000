@@ -47,10 +47,6 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
-	uint8_t var[10] = {};
-	uint8_t rav[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,7 +61,12 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+	uint8_t directionGear[2] = {};
+	static int VELOCIDADE_DEFAULT = 50;
+	int frente = 0, tras = 0;
+	int velocidade = 50;
 
+	int lock = 0;
 /* USER CODE END 0 */
 
 /**
@@ -101,18 +102,37 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_IT(&huart1, var, 10);
-  HAL_UART_Transmit_IT(&huart1, rav, 10);
+  HAL_TIM_Base_Start_IT(&htim1);
+  HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_2);
+
+  HAL_UART_Receive_IT(&huart1, direction, 1);
+
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
+  while (1){
 
-    /* USER CODE BEGIN 3 */
+	  if(lock == 1){
+		  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, frente);
+
+		  frente++;
+		  if(frente > velocidade){
+			  frente--;
+		  }
+
+	  }else if(lock == -1){
+		  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, tras);
+		  tras++;
+		  if(tras > VELOCIDADE_DEFAULT){
+			  tras--;
+		  }
+	  }
+
+
+
   }
   /* USER CODE END 3 */
 }
@@ -215,6 +235,10 @@ static void MX_TIM1_Init(void)
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -341,17 +365,46 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void HAL_UART_RxCplCallBack(UART_HandleTypeDef *huart)
-{
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1){
 
-	__NOP();
+	int i = 0;
+
+	//Direcao
+	if(directionGear[i] == 'F'){
+		lock = 1;
+
+	}else if(directionGear[i] == 'B'){
+		lock = -1;
+
+	}else if(directionGear[i] == 'X'){
+		directionGear[i+1] = '1';
+		lock = 0;
+		frente = 0;
+		tras = 0;
+
+	}else{
+		i = 1;
+		//Marcha
+		if(directionGear[i] == '1'){
+			velocidade = 50;
+
+		}else if(directionGear[i] == '2'){
+			velocidade = 70;
+
+		}else if(directionGear[i] == '3'){
+			velocidade = 90;
+		}
+	}
+
 }
 
-void HAL_UART_TxCplCallBack(UART_HandleTypeDef *huart)
-{
-
-	__NOP();
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim1){
+	TIM1 -> CCR1 = frente;
+	TIM1 -> CCR2 = tras;
 }
+
+
+
 
 /* USER CODE END 4 */
 
