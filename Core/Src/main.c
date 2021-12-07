@@ -62,9 +62,9 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 	uint8_t directionGear[2] = {};
-	static int VELOCIDADE_DEFAULT = 50;
+//	static int VELOCIDADE_DEFAULT = 50;
 	int frente = 0, tras = 0;
-	int velocidade = 50;
+	int velocidade = 70;
 
 	int lock = 0;
 /* USER CODE END 0 */
@@ -74,8 +74,6 @@ static void MX_USART1_UART_Init(void);
   * @retval int
   */
 int main(void){
-
-	lock = 1;
 	directionGear[0] = 'F';
 
   /* USER CODE BEGIN 1 */
@@ -106,8 +104,6 @@ int main(void){
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Base_Start_IT(&htim1);
-  HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_2);
 
   HAL_UART_Receive_IT(&huart1, directionGear, 1);
 
@@ -116,20 +112,26 @@ int main(void){
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+ HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
   while (1){
 
 	  if(lock == 1){
+
+	  HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_1);
+	  HAL_TIM_PWM_Stop_IT(&htim1, TIM_CHANNEL_2);
+
 		  frente++;
 		  if(frente > velocidade){
 	  		  frente--;
 	  	  }
 
-	  }else if(lock == -1){
+	  }/*FIXME else if(lock == -1){
 		  tras++;
-		  if(tras > VELOCIDADE_DEFAULT){
+		  if(tras > velocidade){
 			  tras--;
 		  }
-	  }
+	  }FIXME */
   /* USER CODE END 3 */
   }
 }
@@ -361,7 +363,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+/*FIXME
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1){
 
 	int i = 0;
@@ -393,15 +395,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1){
 		}
 	}
 
-}
+}FIXME*/
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim1){
 	TIM1 -> CCR1 = frente;
-	TIM1 -> CCR2 = tras;
+//	TIM1 -> CCR2 = tras;
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
-
+	if(GPIO_Pin == B1_Pin){						//quem gerou a interrupcao foi o pino B1?
+		lock = 1;
+	}
+}
 
 /* USER CODE END 4 */
 
