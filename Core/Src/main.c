@@ -73,8 +73,11 @@ static void MX_USART1_UART_Init(void);
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
+int main(void){
+
+	lock = 1;
+	directionGear[0] = 'F';
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -106,7 +109,7 @@ int main(void)
   HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_2);
 
-  HAL_UART_Receive_IT(&huart1, direction, 1);
+  HAL_UART_Receive_IT(&huart1, directionGear, 1);
 
 
   /* USER CODE END 2 */
@@ -116,25 +119,19 @@ int main(void)
   while (1){
 
 	  if(lock == 1){
-		  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, frente);
-
 		  frente++;
 		  if(frente > velocidade){
-			  frente--;
-		  }
+	  		  frente--;
+	  	  }
 
 	  }else if(lock == -1){
-		  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, tras);
 		  tras++;
 		  if(tras > VELOCIDADE_DEFAULT){
 			  tras--;
 		  }
 	  }
-
-
-
-  }
   /* USER CODE END 3 */
+  }
 }
 
 /**
