@@ -41,6 +41,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -55,6 +56,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -64,18 +66,21 @@ static void MX_USART1_UART_Init(void);
 	uint8_t directionGear[2] = {};
 //	static int VELOCIDADE_DEFAULT = 50;
 	int frente = 0, tras = 0;
-	int velocidade = 70;
-
+	int velocidade = 100;
+	int xesque = 0;
 	int lock = 0;
+
+	int ciclo1[3] = {84, 126, 168};
+	int ciclo = 0;
+	int i = 0;
 /* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
   * @retval int
   */
-int main(void){
-	directionGear[0] = 'F';
-
+int main(void)
+{
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -101,39 +106,43 @@ int main(void){
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_USART1_UART_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Base_Start_IT(&htim1);
-
-  HAL_UART_Receive_IT(&huart1, directionGear, 1);
-
+  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_UART_Receive_IT(&huart1, directionGear, 2);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
- HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
   while (1){
+    /* USER CODE END WHILE */
 
-	  if(lock == 1){
+    /* USER CODE BEGIN 3 */
+//	  ciclo = 320;
+	   if(lock == 1){
 
-	  HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_1);
-	  HAL_TIM_PWM_Stop_IT(&htim1, TIM_CHANNEL_2);
+ 		  HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_1);
+ 		  HAL_GPIO_WritePin(RE_GPIO_Port, RE_Pin, 0);
 
-		  frente++;
-		  if(frente > velocidade){
-	  		  frente--;
-	  	  }
+ 		  frente++;
+ 		  if(frente > velocidade){
+ 	  		  frente--;
+ 	  	  }
 
-	  }/*FIXME else if(lock == -1){
-		  tras++;
-		  if(tras > velocidade){
-			  tras--;
-		  }
-	  }FIXME */
-  /* USER CODE END 3 */
+ 	  }else if(lock == -1){
+ 		  frente = 0;
+
+ 	  }else if(lock == 0 && xesque == 1){
+ 		  HAL_Delay(800);
+ 		  xesque = 0;
+ 	  }
+
   }
+  /* USER CODE END 3 */
 }
 
 /**
@@ -237,10 +246,6 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
@@ -256,6 +261,65 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 2 */
   HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 999;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 1679;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
 
 }
 
@@ -341,7 +405,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LD2_Pin|RE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -349,12 +413,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : LD2_Pin RE_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin|RE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
@@ -363,49 +427,89 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-/*FIXME
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1){
 
-	int i = 0;
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1){//Interrupção de recepção de comunicação serial
 
-	//Direcao
-	if(directionGear[i] == 'F'){
+	xesque = 1;
+
+	if(directionGear[0] == 'F'){
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 1);
+		HAL_GPIO_WritePin(RE_GPIO_Port, RE_Pin, 0);
 		lock = 1;
 
-	}else if(directionGear[i] == 'B'){
-		lock = -1;
-
-	}else if(directionGear[i] == 'X'){
-		directionGear[i+1] = '1';
-		lock = 0;
+	}else if(directionGear[0] == 'f'){
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 0);
+		HAL_GPIO_WritePin(RE_GPIO_Port, RE_Pin, 0);
 		frente = 0;
-		tras = 0;
-
-	}else{
-		i = 1;
-		//Marcha
-		if(directionGear[i] == '1'){
-			velocidade = 50;
-
-		}else if(directionGear[i] == '2'){
-			velocidade = 70;
-
-		}else if(directionGear[i] == '3'){
-			velocidade = 90;
-		}
+		lock = 0;
 	}
 
-}FIXME*/
+	if(directionGear[0] == 'B'){
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 1);
+		HAL_GPIO_WritePin(RE_GPIO_Port, RE_Pin, 1);
+		lock = -1;
 
-void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim1){
-	TIM1 -> CCR1 = frente;
-//	TIM1 -> CCR2 = tras;
+	}else if(directionGear[0] == 'b'){
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 0);
+		HAL_GPIO_WritePin(RE_GPIO_Port, RE_Pin, 0);
+		lock = 0;
+	}
+
+	if(directionGear[0] == 'R'){
+		HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 1);
+		ciclo = 170;
+		lock = 10;
+
+	}else if(directionGear[0] == 'r'){
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 0);
+		ciclo = 140;
+		lock = 0;
+	}
+
+	if(directionGear[0] == 'L'){
+		HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 1);
+		ciclo = 100;
+		lock = 10;
+
+	}else if(directionGear[0] == 'l'){
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 0);
+		ciclo = 140;
+		lock = 0;
+	}
+
+
+	  HAL_UART_Receive_IT(huart1, directionGear, 1);
 }
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim){//PWM para o motor
 
-	if(GPIO_Pin == B1_Pin){						//quem gerou a interrupcao foi o pino B1?
-		lock = 1;
+	if(htim ->Instance == TIM1 ){
+		TIM1 -> CCR1 = frente;
+		//	TIM1 -> CCR2 = tras;
+
+	}
+
+	else if(htim ->Instance == TIM3 ){
+		TIM3 -> CCR1 = ciclo;
+	}
+
+	if(ciclo == 126){
+		HAL_TIM_PWM_Stop_IT(&htim3, TIM_CHANNEL_1);
+	}
+
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){//Interrupção de botão
+
+	if(GPIO_Pin == B1_Pin){
+		lock = 10;
+		i++;
+
+		if(i>3){
+			i=0;
+		}
 	}
 }
 
@@ -443,4 +547,3 @@ void assert_failed(uint8_t *file, uint32_t line)
 }
 #endif /* USE_FULL_ASSERT */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
